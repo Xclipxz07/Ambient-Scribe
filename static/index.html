@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ambient Scribe — Private AI Medical Scribe</title>
+  <meta name="description" content="Privacy-first AI medical scribe for UK clinics. Transcribes consultations and generates SOAP notes locally."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="1.5"/>
+            <path d="M9 14Q14 8 19 14Q14 20 9 14Z" fill="var(--accent)" opacity=".3"/>
+            <circle cx="14" cy="14" r="3" fill="var(--accent)"/>
+            <path d="M14 7V4M14 24V21M7 14H4M24 14H21" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div><h1 class="brand-name">Ambient Scribe</h1><span class="brand-sub">Private AI Medical Documentation</span></div>
+      </div>
+      <div class="header-right">
+        <div class="privacy-pill"><span class="priv-dot"></span>🔒 100% Local — Data never leaves this device</div>
+        <div class="compliance"><span class="badge">HIPAA</span><span class="badge">GDPR</span><span class="badge badge-accent">Compliant by Design</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Left column -->
+    <section class="col col-left">
+      <div class="card" id="model-card">
+        <div class="card-head"><span>🧠</span><h2>AI Model</h2>
+          <button class="icon-btn" id="refresh-models" title="Refresh models"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+        </div>
+        <div class="model-body">
+          <div class="sel-wrap"><select id="model-select"><option disabled selected>Loading…</option></select><span class="sel-arrow">▾</span></div>
+          <p class="hint" id="model-hint"></p>
+        </div>
+      </div>
+
+      <div class="card" id="rec-card">
+        <div class="card-head"><span>🎙️</span><h2>Recording</h2></div>
+        <div class="rec-body">
+          <canvas id="waveform" width="400" height="56"></canvas>
+          <div class="rec-status"><div class="rec-indicator" id="rec-ind"><span class="rec-dot" id="rec-dot"></span><span id="rec-label">Ready</span></div><span class="timer" id="timer">00:00</span></div>
+          <div class="rec-buttons">
+            <button class="btn btn-rec" id="start-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Record</button>
+            <button class="btn btn-stop" id="stop-btn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Stop</button>
+          </div>
+          <div class="upload-row">
+            <label class="upload-label" for="audio-upload"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload audio file</label>
+            <input type="file" id="audio-upload" accept="audio/*,.webm,.wav,.mp3,.m4a,.ogg" hidden/>
+            <span id="upload-name" class="upload-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-grow" id="transcript-card">
+        <div class="card-head"><span>📄</span><h2>Transcript</h2>
+          <button class="icon-btn" id="copy-transcript" title="Copy transcript" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
+        <div class="transcript-body" id="transcript-body"><p class="muted">Transcription will appear here after recording…</p></div>
+        <div class="transcript-foot" id="transcript-foot" style="display:none">
+          <button class="btn btn-sm btn-ghost" id="regen-btn">🔄 Re-generate SOAP</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right column -->
+    <section class="col col-right">
+      <div class="card card-grow soap-card" id="soap-card">
+        <div class="card-head soap-head">
+          <div class="soap-title"><span>📋</span><h2>SOAP Note</h2></div>
+          <div class="soap-actions">
+            <button class="btn btn-sm btn-ghost" id="copy-soap" disabled>📋 Copy</button>
+            <button class="btn btn-sm btn-ghost" id="export-txt" disabled>💾 Export .txt</button>
+            <button class="btn btn-sm btn-accent" id="go-btn" disabled>⚡ Transcribe &amp; Generate</button>
+          </div>
+        </div>
+
+        <div id="progress" class="progress" style="display:none">
+          <div class="pstep" id="ps-transcribe"><span class="pdot"></span>Transcribing audio…</div>
+          <div class="pstep" id="ps-generate"><span class="pdot"></span>Generating SOAP note…</div>
+        </div>
+
+        <div class="soap-empty" id="soap-empty">
+          <div class="soap-empty-icon">📋</div>
+          <h3>SOAP Note will appear here</h3>
+          <p>Record or upload audio, then click <strong>Transcribe &amp; Generate</strong></p>
+          <div class="tag-row"><span class="tag tag-s">S</span><span class="tag tag-o">O</span><span class="tag tag-a">A</span><span class="tag tag-p">P</span></div>
+        </div>
+
+        <div id="soap-sections" class="soap-sections" style="display:none">
+          <div class="soap-sec" id="sec-s">
+            <div class="soap-sec-head"><span class="soap-letter sl-s">S</span><div><strong>Subjective</strong><small>Patient's reported symptoms &amp; history</small></div></div>
+            <div class="soap-sec-body" id="c-s" contenteditable="true" spellcheck="true"></div>
+          </div>
+          <div class="soap-sec" id="sec-o">
+            <div class="soap-sec-head"><span class="soap-letter sl-o">O</span><div><strong>Objective</strong><small>Examination findings &amp; observations</small></div></div>
+            <div class="soap-sec-body" id="c-o" contenteditable="true" spellcheck="true"></div>
+          </div>
+          <div class="soap-sec" id="sec-a">
+            <div class="soap-sec-head"><span class="soap-letter sl-a">A</span><div><strong>Assessment</strong><small>Diagnosis &amp; clinical reasoning</small></div></div>
+            <div class="soap-sec-body" id="c-a" contenteditable="true" spellcheck="true"></div>
+          </div>
+          <div class="soap-sec" id="sec-p">
+            <div class="soap-sec-head"><span class="soap-letter sl-p">P</span><div><strong>Plan</strong><small>Treatment, medications &amp; follow-up</small></div></div>
+            <div class="soap-sec-body" id="c-p" contenteditable="true" spellcheck="true"></div>
+          </div>
+        </div>
+
+        <div class="soap-foot" id="soap-foot" style="display:none">
+          <span id="soap-info" class="soap-info"></span>
+          <button class="btn btn-sm btn-ghost btn-danger" id="clear-btn">🗑 Clear all</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <footer class="footer">
+    <span>Ambient Scribe © 2025 — UK Private Clinics &amp; Care Homes</span>
+    <span>Powered by <a href="https://github.com/openai/whisper" target="_blank">Whisper</a> &amp; <a href="https://ollama.ai" target="_blank">Ollama</a></span>
+    <span>🔒 Zero cloud dependencies</span>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
